@@ -18,7 +18,6 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-COIN_MM = 25.0  # 1 元硬币直径
 KNOWN = ["metric_screw", "imperial_screw", "metric_nut", "imperial_nut"]
 MAX_SIDE = 2000  # 手机原图太大，先缩小
 
@@ -107,6 +106,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("root", type=Path)
     ap.add_argument("--out", type=Path, default=Path("out/stage0"))
+    ap.add_argument("--coin-mm", type=float, default=24.26,
+                    help="比例尺硬币直径，默认 25 美分硬币 24.26 mm；1 元人民币用 25.0")
     ap.add_argument("--min-area", type=float, default=150, help="小于这个像素面积的当噪点")
     args = ap.parse_args()
 
@@ -123,7 +124,7 @@ def main():
         found = blobs(segment(img), args.min_area)
         feats = [features(img, c, a, h) for c, a, h in found]
         coin = find_coin(feats)
-        mm_per_px = COIN_MM / feats[coin]["length_px"] if coin is not None else None
+        mm_per_px = args.coin_mm / feats[coin]["length_px"] if coin is not None else None
 
         vis = img.copy()
         for i, ((c, _, _), f) in enumerate(zip(found, feats)):
