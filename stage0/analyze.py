@@ -65,6 +65,9 @@ def blobs(mask, min_area):
         area = cv2.contourArea(c)
         if area < min_area:
             continue
+        x, y, w, h = cv2.boundingRect(c)
+        if x <= 1 or y <= 1 or x + w >= mask.shape[1] - 1 or y + h >= mask.shape[0] - 1:
+            continue  # 碰到画面边缘的多半是纸边或桌面，不是完整零件
         hole = 0.0
         child = hier[0][i][2]
         while child != -1:
