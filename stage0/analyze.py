@@ -33,16 +33,24 @@ def load(path):
 
 
 def segment(img):
-    """背景是纯色纸：离背景颜色足够远的像素就是前景。"""
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB).astype(np.float32)
-    bg = np.median(lab.reshape(-1, 3), axis=0)
-    dist = np.linalg.norm(lab - bg, axis=2)
+    """背景是彩色纸：色度（Lab 的 a、b）离局部背景够远的像素就是前景。
+
+    只看色度、不看亮度，所以阴影和纸面明暗不均不会被当成零件；
+    金属是灰色的，在彩色纸上色度差很大。背景用大核中值滤波逐处估计。
+    """
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    small = cv2.resize(lab, None, fx=0.125, fy=0.125, interpolation=cv2.INTER_AREA)
+    bg = cv2.medianBlur(small, 41)  # 约 330 px，比硬币和最长的螺丝都大
+    bg = cv2.resize(bg, (lab.shape[1], lab.shape[0]), interpolation=cv2.INTER_LINEAR)
+    diff = lab[..., 1:].astype(np.float32) - bg[..., 1:].astype(np.float32)
+    dist = np.linalg.norm(diff, axis=2)
     dist = cv2.GaussianBlur(dist, (5, 5), 0)
     d8 = np.clip(dist * 3, 0, 255).astype(np.uint8)
     _, mask = cv2.threshold(d8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, k)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, k)
+    # 螺纹上的高光会把一颗螺丝断成两段，用大一点的核把它连回去
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
     return mask
 
 
@@ -97,7 +105,8 @@ def find_coin(feats):
 
 
 def shape_guess(f):
-    if f["hole_ratio"] > 0.05 or f["elongation"] < 1.6:
+    # 短螺丝侧躺时长宽比也很小，所以只靠“中间有没有孔”判断螺母
+    if f["hole_ratio"] > 0.15:
         return "nut"
     return "screw"
 
@@ -185,7 +194,8 @@ def plot(rows, path):
             ax[1].hist(vals, bins=40, alpha=0.6, color=colors[lab], label=lab)
     ax[1].set_xlabel("screw length (mm)")
     ax[1].set_title("length histogram: look for 3 clusters")
-    ax[1].legend()
+    if screws:
+        ax[1].legend()
     fig.tight_layout()
     fig.savefig(path, dpi=120)
 
