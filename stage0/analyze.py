@@ -18,7 +18,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-KNOWN = ["metric_screw", "imperial_screw", "metric_nut", "imperial_nut", "metric_keps_nut", "imperial_keps_nut", "metric_plain_nut"]
+KNOWN = ["metric_screw", "imperial_screw", "metric_nut", "imperial_nut", "metric_keps_nut", "imperial_keps_nut", "metric_plain_nut", "imperial_plain_nut"]
 MAX_SIDE = 2000  # 手机原图太大，先缩小
 
 
@@ -182,7 +182,7 @@ def plot(rows, path):
     colors = {"metric_screw": "#222222", "imperial_screw": "#9aa4ad",
               "metric_nut": "#c0392b", "imperial_nut": "#2e86c1",
               "metric_keps_nut": "#8e44ad", "imperial_keps_nut": "#16a085",
-              "metric_plain_nut": "#d35400", "unknown": "#e0b84c"}
+              "metric_plain_nut": "#d35400", "imperial_plain_nut": "#f39c12", "unknown": "#e0b84c"}
     fig, ax = plt.subplots(1, 2, figsize=(12, 5))
     for lab, col in colors.items():
         sel = [r for r in rows if r["label"] == lab]
