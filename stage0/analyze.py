@@ -18,7 +18,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-KNOWN = ["metric_screw", "imperial_screw", "metric_nut", "imperial_nut"]
+KNOWN = ["metric_screw", "imperial_screw", "metric_nut", "imperial_nut", "metric_keps_nut", "imperial_keps_nut", "metric_plain_nut"]
 MAX_SIDE = 2000  # 手机原图太大，先缩小
 
 
@@ -91,6 +91,9 @@ def features(img, c, area, hole):
         "length_px": length, "width_px": width,
         "elongation": length / width,
         "circularity": 4 * np.pi * area / max(perim, 1e-6) ** 2,
+        # 星形垫圈的齿让轮廓凹凸不平：面积/凸包面积 变小，周长/凸包周长 变大
+        "solidity": area / max(cv2.contourArea(cv2.convexHull(c)), 1e-6),
+        "roughness": perim / max(cv2.arcLength(cv2.convexHull(c), True), 1e-6),
         "hole_ratio": hole / area,
         "v_mean": float(v.mean()), "v_p90": float(np.percentile(v, 90)),
         "s_mean": float(s.mean()),
@@ -162,7 +165,7 @@ def main():
         print("没检测到零件")
         return
     keys = ["file", "label", "shape_guess", "length_mm", "length_px", "width_px", "elongation",
-            "circularity", "hole_ratio", "v_mean", "v_p90", "s_mean", "area_px", "cx", "cy"]
+            "circularity", "solidity", "roughness", "hole_ratio", "v_mean", "v_p90", "s_mean", "area_px", "cx", "cy"]
     with open(args.out / "features.csv", "w", newline="", encoding="utf-8-sig") as fh:
         w = csv.DictWriter(fh, fieldnames=keys, extrasaction="ignore")
         w.writeheader()
@@ -177,7 +180,9 @@ def plot(rows, path):
     import matplotlib.pyplot as plt
 
     colors = {"metric_screw": "#222222", "imperial_screw": "#9aa4ad",
-              "metric_nut": "#c0392b", "imperial_nut": "#2e86c1", "unknown": "#e0b84c"}
+              "metric_nut": "#c0392b", "imperial_nut": "#2e86c1",
+              "metric_keps_nut": "#8e44ad", "imperial_keps_nut": "#16a085",
+              "metric_plain_nut": "#d35400", "unknown": "#e0b84c"}
     fig, ax = plt.subplots(1, 2, figsize=(12, 5))
     for lab, col in colors.items():
         sel = [r for r in rows if r["label"] == lab]
